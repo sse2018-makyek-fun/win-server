@@ -5,22 +5,29 @@
 
 #include "utils.h"
 
-#define BOARD_SIZE 20
+#define BOARD_SIZE 8
+#define EMPTY      0
 #define BLACK      1
 #define WHITE      2
-#define WIN_FLAG   5
+
+typedef int OPTION;
+#define UP 0
+#define DOWN 1
+#define LEFT 2
+#define RIGHT 3
 
 struct globalArgs_t {
     int port;
-    char *mapFile;
 } globalArgs;
 
-static const char *optString = "p:m:h";
+static const char *optString = "p:h";
+
+const int DIR[4][2] = { {-1, 0}, {1, 0}, {0, -1}, {0, 1} };
 
 char board[BOARD_SIZE][BOARD_SIZE] = {0};
 char buffer[MAXBYTE] = {0};
 int turn = BLACK;
-int row, col;
+int nowx, nowy, nextx, nexty, option;
 
 SOCKET servSock, blackSock, whiteSock;
 
@@ -52,135 +59,107 @@ char *getIp()
 
 void sendTo(SOCKET *sock, const char *message)
 {
-    send(*sock, message, strlen(message)+sizeof(char), NULL);
+    send(*sock, message, strlen(message) + sizeof(char), 0);
     Sleep(100);
 }
 
 void retry(SOCKET *sock)
 {
-    sendTo(sock, "READY\n");
+    sendTo(sock, "TURN\n");
 }
 
-BOOL isWin(int x, int y)
+BOOL inBoard(int x, int y)
 {
-    int count;
-    int i, j;
-    
-    // Judge row
-    count = 1;
-    i = x - 1;
-    while (i >= 0 && board[x][y] == board[i][y])
-    {
-        ++count;
-        --i;
-    }
-    
-    i = x + 1;
-    while (i < BOARD_SIZE && board[x][y] == board[i][y])
-    {
-        ++count;
-        ++i;
-    }
-    
-    if (count >= WIN_FLAG) return TRUE;
-    
-    // Judge col
-    count = 1;
-    j = y - 1;
-    while (j >= 0 && board[x][y] == board[x][j])
-    {
-        ++count;
-        --j;
-    }
-    
-    j = y + 1;
-    while (j < BOARD_SIZE && board[x][y] == board[x][j])
-    {
-        ++count;
-        ++j;
-    }
-    
-    if (count >= WIN_FLAG) return TRUE;
-    
-    // Judge left oblique
-    count = 1;
-    i = x - 1;
-    j = y - 1;
-    while (i >= 0 && j >= 0 && board[x][y] == board[i][j])
-    {
-        ++count;
-        --i;
-        --j;
-    }
-    
-    i = x + 1;
-    j = y + 1;
-    while (i < BOARD_SIZE && j < BOARD_SIZE && board[x][y] == board[i][j])
-    {
-        ++count;
-        ++i;
-        ++j;
-    }
-    
-    if (count >= WIN_FLAG) return TRUE;
-    
-    // Judge right oblique
-    count = 1;
-    i = x - 1;
-    j = y + 1;
-    while (i >= 0 && j < BOARD_SIZE && board[x][y] == board[i][j])
-    {
-        ++count;
-        --i;
-        ++j;
-    }
-    
-    i = x + 1;
-    j = y - 1;
-    while (i < BOARD_SIZE && j >= 0 && board[x][y] == board[i][j])
-    {
-        ++count;
-        ++i;
-        --j;
-    }
-    
-    if (count >= WIN_FLAG) return TRUE;
-    
-    return FALSE;
+    return x >= 0 && y >= 0 && x < BOARD_SIZE && y < BOARD_SIZE;
 }
 
 void handle(SOCKET *me, int meFlag, SOCKET *other, int otherFlag)
 {
+	int i, j, k;
     memset(buffer, 0, sizeof(buffer));
-    recv(*me, buffer, MAXBYTE, NULL);
-    sscanf(buffer, "%d %d\n", &row, &col);
+    recv(*me, buffer, MAXBYTE, 0);
+    sscanf(buffer, "%d %d %d\n", &nowx, &nowy, &option);
+    printf("client %d : %d %d %d\n", meFlag, nowx, nowy, option);
     
     // Judge if legal
-    if (board[row][col] != 0)
+    if (option < UP || option > RIGHT)
+    {
+        retry(me);
+        return;
+	}
+    
+    nextx = nowx + DIR[option][0];
+	nexty = nowy + DIR[option][1];
+    
+    // Judge if legal
+    if (!inBoard(nowx, nowy) || !inBoard(nextx, nexty) || board[nowx][nowy] != meFlag || board[nextx][nexty] != EMPTY)
     {
         retry(me);
         return;
     }
     
-    board[row][col] = meFlag;
+    board[nowx][nowy] = EMPTY;
+    board[nextx][nexty] = meFlag;
     
+    
+    // Mak
+    for (i = 0; i < 4; i++)
+    {
+        if (inBoard(nextx + 2 * DIR[i][0], nexty + 2 * DIR[i][1]) &&
+            board[nextx + DIR[i][0]][nexty + DIR[i][1]] == otherFlag && board[nextx + 2 * DIR[i][0]][nexty + 2 * DIR[i][1]] == meFlag)
+        {
+            board[nextx + DIR[i][0]][nexty + DIR[i][1]] = meFlag;
+        }
+    }
+    
+    // Yak
+    if (nexty - 1 >= 0 && nexty + 1 < BOARD_SIZE && board[nextx][nexty - 1] == otherFlag && board[nextx][nexty + 1] == otherFlag)
+    {
+        board[nextx][nexty - 1] = board[nextx][nexty + 1] = meFlag;
+    }
+    if (nextx - 1 >= 0 && nextx + 1 < BOARD_SIZE && board[nextx - 1][nexty] == otherFlag && board[nextx + 1][nexty] == otherFlag)
+    {
+        board[nextx - 1][nexty] = board[nextx + 1][nexty] = meFlag;
+    }
+
     switch (meFlag)
     {
         case BLACK:
-            printf("BLACK step at (%d, %d)\n", row, col);
+            printf("BLACK move chess piece from (%d, %d) to (%d, %d)\n", nowx, nowy, nextx, nexty);
             break;
         case WHITE:
-            printf("WHITE step at (%d, %d)\n", row, col);
+            printf("WHITE move chess piece from (%d, %d) to (%d, %d)\n", nowx, nowy, nextx, nexty);
             break;
     }
     
     // Forward
     memset(buffer, 0, sizeof(buffer));
-    sprintf(buffer, "TURN %d %d\n", row, col);
+    sprintf(buffer, "PLACE %d %d %d\n", nowx, nowy, option);
     sendTo(other, buffer);
     
+    // Count Enemy's Chess Pieces
+    int enemyCount = 0;
+	BOOL enemyCannotMove = TRUE;
+    for (i = 0; i < BOARD_SIZE; i++)
+    {
+    	for (j = 0; j < BOARD_SIZE; j++)
+    	{
+    		if (board[i][j] == otherFlag)
+    		{
+    			enemyCount ++;
+    			for (k = 0; k < 4; k++)
+    			{
+    				if (enemyCannotMove && inBoard(i+DIR[k][0],j+DIR[k][1]) && board[i+DIR[k][0]][j+DIR[k][1]] == EMPTY)
+    				{
+    					enemyCannotMove = FALSE;
+					}
+				}
+			}
+		}
+	}
+	
     // Judge result
-    if (isWin(row, col))
+    if (enemyCount == 0 || enemyCannotMove)
     {
         sendTo(me, "WIN\n");
         sendTo(other, "LOSE\n");
@@ -194,8 +173,10 @@ void handle(SOCKET *me, int meFlag, SOCKET *other, int otherFlag)
         }
         return;
     }
-    
-    sendTo(other, "READY\n");
+    else
+    {
+    	sendTo(other, "TURN\n");
+	}
     
     turn = otherFlag;
 }
@@ -204,28 +185,7 @@ void startSock()
 {
     // Initial DLL
     WSADATA wsaData;
-    WSAStartup( MAKEWORD(2, 2), &wsaData);
-}
-
-void initMap()
-{
-    FILE *fp;
-    if ((fp = fopen(globalArgs.mapFile, "r")) == NULL)
-    {
-        printf("Map file [%s] does not exist!\n", globalArgs.mapFile);
-        exit(1);
-    }
-    int x, y;
-    while (fscanf(fp, "%d%d\n", &x, &y) != EOF)
-    {
-        memset(buffer, 0, sizeof(buffer));
-        sprintf(buffer, "PLACE %d %d\n", x, y);
-        sendTo(&blackSock, buffer);
-        sendTo(&whiteSock, buffer);
-        
-        if (BLACK == turn) turn = WHITE;
-        else turn = BLACK;
-    }
+    WSAStartup(MAKEWORD(2, 2), &wsaData);
 }
 
 void initSock(int port)
@@ -269,15 +229,13 @@ void initSock(int port)
     printf("Client Connected\n");
     
     // Initial BLACK
-    sendTo(&blackSock, "START\n");
+    sendTo(&blackSock, "START 1\n");
     
     // Initial WHITE
-    sendTo(&whiteSock, "START\n");
+    sendTo(&whiteSock, "START 2\n");
     
-    if (NULL != globalArgs.mapFile) initMap();
-    
-    if (BLACK == turn) sendTo(&blackSock, "READY\n");
-    else sendTo(&whiteSock, "READY\n");
+    // Begin gaming...
+	sendTo(&blackSock, "TURN\n");
 }
 
 void closeSock()
@@ -311,14 +269,12 @@ void display_usage(char *exe)
 {
     printf("Usage: %s [OPTIONS] \n", exe);
     printf("  -p port           Server port\n");
-    printf("  -m mapfile        Specify map file\n");
 }
 
 void initArgs(int argc, char *argv[])
 {
     int opt = 0;
     globalArgs.port = 23333;
-    globalArgs.mapFile = NULL;
     
     opt = getopt(argc, argv, optString);
     while (opt != -1)
@@ -327,9 +283,6 @@ void initArgs(int argc, char *argv[])
         {
             case 'p':
                 globalArgs.port = atoi(optarg);
-                break;
-            case 'm':
-                globalArgs.mapFile = optarg;
                 break;
             case 'h':
                 display_usage(argv[0]);
@@ -342,12 +295,18 @@ void initArgs(int argc, char *argv[])
         
         opt = getopt(argc, argv, optString);
     }
-    
-    if (NULL != globalArgs.mapFile && access(globalArgs.mapFile, F_OK ) == -1)
-    {
-        printf("Map file is invalid! The game will start without map.\n");
-        globalArgs.mapFile = NULL;
-    }
+}
+
+void initBoard()
+{
+	memset(board, 0, sizeof(board));
+	
+	int i;
+	for (i = 0; i < 8; i++)
+	{
+		board[0][i] = board[2][i] = BLACK;
+		board[5][i] = board[7][i] = WHITE;
+	}
 }
 
 int main(int argc, char *argv[]){
@@ -358,7 +317,10 @@ int main(int argc, char *argv[]){
     
     initSock(globalArgs.port);
     
+    initBoard();
+    
     loop();
+    
     closeSock();
     
     return 0;

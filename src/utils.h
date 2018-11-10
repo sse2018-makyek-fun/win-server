@@ -5,6 +5,7 @@
 #ifndef UTILS
 #define UTILS
 
+typedef int BOOL;
 #define TRUE 1
 #define FALSE 0
 #define SOCKET_MAX_BYTE 10000
