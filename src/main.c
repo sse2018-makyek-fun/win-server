@@ -15,6 +15,10 @@ typedef int OPTION;
 #define DOWN 1
 #define LEFT 2
 #define RIGHT 3
+#define UP_LEFT 4
+#define UP_RIGHT 5
+#define DOWN_LEFT 6
+#define DOWN_RIGHT 7
 
 struct globalArgs_t {
     int port;
@@ -22,7 +26,7 @@ struct globalArgs_t {
 
 static const char *optString = "p:h";
 
-const int DIR[4][2] = { {-1, 0}, {1, 0}, {0, -1}, {0, 1} };
+const int DIR[8][2] = { {-1, 0}, {1, 0}, {0, -1}, {0, 1}, {-1, -1}, {-1, 1}, {1, -1}, {1, 1} };
 
 char board[BOARD_SIZE][BOARD_SIZE] = {0};
 char buffer[MAXBYTE] = {0};
@@ -82,7 +86,7 @@ void handle(SOCKET *me, int meFlag, SOCKET *other, int otherFlag)
     printf("client %d : %d %d %d\n", meFlag, nowx, nowy, option);
     
     // Judge if legal
-    if (option < UP || option > RIGHT)
+    if (option < UP || option > DOWN_RIGHT)
     {
         retry(me);
         return;
@@ -147,7 +151,7 @@ void handle(SOCKET *me, int meFlag, SOCKET *other, int otherFlag)
     		if (board[i][j] == otherFlag)
     		{
     			enemyCount ++;
-    			for (k = 0; k < 4; k++)
+    			for (k = 0; k < 8; k++)
     			{
     				if (enemyCannotMove && inBoard(i+DIR[k][0],j+DIR[k][1]) && board[i+DIR[k][0]][j+DIR[k][1]] == EMPTY)
     				{
