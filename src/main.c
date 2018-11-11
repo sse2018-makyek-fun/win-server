@@ -306,10 +306,10 @@ void initBoard()
 	memset(board, 0, sizeof(board));
 	
 	int i;
-	for (i = 0; i < 8; i++)
+	for (i = 0; i < 4; i++)
 	{
-		board[0][i] = board[2][i] = BLACK;
-		board[5][i] = board[7][i] = WHITE;
+    	board[2][2+i] = board[3][i] = BLACK;
+    	board[4][4+i] = board[5][2+i] = WHITE;
 	}
 }
 
