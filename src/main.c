@@ -308,8 +308,8 @@ void initBoard()
 	int i;
 	for (i = 0; i < 4; i++)
 	{
-    	board[2][2+i] = board[3][i] = BLACK;
-    	board[4][4+i] = board[5][2+i] = WHITE;
+    	board[2][2+i] = board[3][i] = WHITE;
+    	board[4][4+i] = board[5][2+i] = BLACK;
 	}
 }
 
