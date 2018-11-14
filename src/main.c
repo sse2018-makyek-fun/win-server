@@ -106,16 +106,6 @@ void handle(SOCKET *me, int meFlag, SOCKET *other, int otherFlag)
     board[nextx][nexty] = meFlag;
     
     
-    // Mak
-    for (i = 0; i < 4; i++)
-    {
-        if (inBoard(nextx + 2 * DIR[i][0], nexty + 2 * DIR[i][1]) &&
-            board[nextx + DIR[i][0]][nexty + DIR[i][1]] == otherFlag && board[nextx + 2 * DIR[i][0]][nexty + 2 * DIR[i][1]] == meFlag)
-        {
-            board[nextx + DIR[i][0]][nexty + DIR[i][1]] = meFlag;
-        }
-    }
-    
     // Yak
     if (nexty - 1 >= 0 && nexty + 1 < BOARD_SIZE && board[nextx][nexty - 1] == otherFlag && board[nextx][nexty + 1] == otherFlag)
     {
@@ -126,6 +116,16 @@ void handle(SOCKET *me, int meFlag, SOCKET *other, int otherFlag)
         board[nextx - 1][nexty] = board[nextx + 1][nexty] = meFlag;
     }
 
+    // Mak
+    for (i = 0; i < 4; i++)
+    {
+        if (inBoard(nextx + 2 * DIR[i][0], nexty + 2 * DIR[i][1]) &&
+            board[nextx + DIR[i][0]][nexty + DIR[i][1]] == otherFlag && board[nextx + 2 * DIR[i][0]][nexty + 2 * DIR[i][1]] == meFlag)
+        {
+            board[nextx + DIR[i][0]][nexty + DIR[i][1]] = meFlag;
+        }
+    }
+    
     switch (meFlag)
     {
         case BLACK:
