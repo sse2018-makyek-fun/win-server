@@ -5,7 +5,7 @@
 
 #include "utils.h"
 
-#define BOARD_SIZE 8
+#define BOARD_SIZE 12
 #define EMPTY      0
 #define BLACK      1
 #define WHITE      2
@@ -107,6 +107,14 @@ void handle(SOCKET *me, int meFlag, SOCKET *other, int otherFlag)
     
     
     // Yak
+    if (inBoard(nextx - 1, nexty - 1) && inBoard(nextx + 1, nexty + 1) && board[nextx - 1][nexty - 1] == otherFlag && board[nextx + 1][nexty + 1] == otherFlag)
+    {
+        board[nextx - 1][nexty - 1] = board[nextx + 1][nexty + 1] = meFlag;
+    }
+    if (inBoard(nextx + 1, nexty - 1) && inBoard(nextx - 1, nexty + 1) && board[nextx + 1][nexty - 1] == otherFlag && board[nextx - 1][nexty + 1] == otherFlag)
+    {
+        board[nextx + 1][nexty - 1] = board[nextx - 1][nexty + 1] = meFlag;
+    }
     if (nexty - 1 >= 0 && nexty + 1 < BOARD_SIZE && board[nextx][nexty - 1] == otherFlag && board[nextx][nexty + 1] == otherFlag)
     {
         board[nextx][nexty - 1] = board[nextx][nexty + 1] = meFlag;
@@ -117,7 +125,7 @@ void handle(SOCKET *me, int meFlag, SOCKET *other, int otherFlag)
     }
 
     // Mak
-    for (i = 0; i < 4; i++)
+    for (i = 0; i < 8; i++)
     {
         if (inBoard(nextx + 2 * DIR[i][0], nexty + 2 * DIR[i][1]) &&
             board[nextx + DIR[i][0]][nexty + DIR[i][1]] == otherFlag && board[nextx + 2 * DIR[i][0]][nexty + 2 * DIR[i][1]] == meFlag)
@@ -306,10 +314,15 @@ void initBoard()
 	memset(board, 0, sizeof(board));
 	
 	int i;
-	for (i = 0; i < 4; i++)
+	for (i = 0; i < 3; i++)
 	{
-    	board[2][2+i] = board[3][i] = WHITE;
-    	board[4][4+i] = board[5][2+i] = BLACK;
+    	board[2][2+i] = board[6][6+i] = WHITE;
+    	board[5][3+i] = board[9][7+i] = BLACK;
+	}
+	for (i = 0; i < 2; i++)
+	{
+    	board[8+i][2] = WHITE;
+    	board[2+i][9] = BLACK;
 	}
 }
 
